@@ -1,11 +1,15 @@
-import express, { Request, Response } from "express";
-import { getAllCrews, createCrew, updateCrewHandler, removeCrew } from "../controllers/crew.controller.js";
+import express from "express";
+import { getAllCrews, createCrew, updateCrewHandler, removeCrew, generateCrewImageHandler } from "../controllers/crew.controller.js";
+
 const router = express.Router();
 
-router.get("/", getAllCrews);
-// router.get("/:id", (req: Request, res: Response) => getCrew(req, res)); 
-router.post("/", (req: Request, res: Response) => createCrew(req, res)); 
-router.put("/:id", (req: Request, res: Response) => updateCrewHandler(req, res)); 
-router.delete("/:id", removeCrew); 
+const asyncHandler = (fn: Function) => (req: express.Request, res: express.Response, next: express.NextFunction) =>
+    Promise.resolve(fn(req, res, next)).catch(next);
+
+router.get("/", asyncHandler(getAllCrews));
+router.post("/", asyncHandler(createCrew));
+router.put("/:id", asyncHandler(updateCrewHandler));
+router.delete("/:id", asyncHandler(removeCrew));
+router.post("/generate-image", asyncHandler(generateCrewImageHandler));
 
 export default router;

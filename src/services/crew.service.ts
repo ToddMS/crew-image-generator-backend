@@ -72,6 +72,38 @@ export class CrewService {
         }
     }
 
+    async getCrewById(crewId: number): Promise<Crew | null> {
+        console.log(`Fetching crew with ID: ${crewId}`);
+        const connection = await pool.getConnection();
+        try {
+            const [rows] = await connection.query<CrewQueryResult[]>(`
+                SELECT 
+                    c.id, 
+                    c.name, 
+                    c.club_name, 
+                    c.race_name,
+                    b.id as boatTypeId, 
+                    b.value as boatTypeValue, 
+                    b.seats as boatTypeSeats, 
+                    b.name as boatTypeName,
+                    GROUP_CONCAT(cm.name ORDER BY cm.seat_number) as crewNames
+                FROM Crews c
+                JOIN BoatTypes b ON c.boat_type_id = b.id
+                LEFT JOIN CrewMembers cm ON c.id = cm.crew_id
+                WHERE c.id = ?
+                GROUP BY c.id
+            `, [crewId]);
+    
+            if (rows.length === 0) return null;
+            return this.mapToCrewResponse(rows[0]);
+        } catch (error) {
+            console.error('Database error:', error);
+            throw new Error('Failed to fetch crew');
+        } finally {
+            connection.release();
+        }
+    }    
+
     async addCrew(crew: Omit<Crew, 'id'>): Promise<number> {
         console.log("Adding crew: ", crew);
         const connection = await pool.getConnection();
