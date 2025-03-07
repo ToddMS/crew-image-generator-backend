@@ -1,5 +1,37 @@
 import { Request, Response } from "express";
 import CrewService from "../services/crew.service.js";
+import { fileURLToPath } from "url";
+import { generateCrewImage } from "../services/image.service.js";
+
+const __filename = fileURLToPath(import.meta.url);
+
+export const generateCrewImageHandler = async (req: Request, res: Response) => {
+    try {
+
+        
+        const { crewId } = req.body;
+        console.log('crewId: ', crewId);
+
+        if (!crewId) {
+            return res.status(400).json({ error: "Crew ID is required" });
+        }
+
+        console.log(`Fetching crew with ID: ${crewId}`);
+        const crew = await CrewService.getCrewById(crewId);
+        if (!crew) {
+            return res.status(404).json({ error: "Crew not found" });
+        }
+
+        const { buffer } = await generateCrewImage(crew);
+
+        res.setHeader("Content-Type", "image/png");
+        res.send(buffer);
+    } catch (error) {
+        console.error("Error generating crew image:", error);
+        res.status(500).json({ error: "Server error" });
+    }
+};
+
 
 export const getAllCrews = async (req: Request, res: Response) => {
     try {
