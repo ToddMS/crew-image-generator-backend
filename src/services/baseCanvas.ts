@@ -1,5 +1,6 @@
 import { createCanvas, loadImage } from "canvas";
 import fs from "fs";
+import { Crew } from "../types/crew.types";
 
 export abstract class BaseCanvas {
     protected width: number;
@@ -21,7 +22,7 @@ export abstract class BaseCanvas {
         throw new Error(`Image not found: ${filePath}`);
     }
 
-    public abstract draw(crew: { crewNames?: string[] }): void;
+    public abstract draw(crew: Crew): void;
 
     public save(outputPath: string) {
         const buffer = this.canvas.toBuffer("image/png");
