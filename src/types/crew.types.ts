@@ -8,10 +8,10 @@ export interface BoatType {
 export interface Crew {
   id: string;
   name: string;
-  crewNames: string[];
-  boatType: BoatType;
   clubName: string;
   raceName: string;
+  boatType: BoatType;
+  crewNames: string[];
 }
 
 export interface CrewDB {

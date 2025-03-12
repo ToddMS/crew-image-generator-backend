@@ -8,10 +8,7 @@ const __filename = fileURLToPath(import.meta.url);
 
 export const generateCrewImageHandler = async (req: Request, res: Response) => {
     try {
-
-        
         const { crewId } = req.body;
-        console.log('crewId: ', crewId);
 
         if (!crewId) {
             return res.status(400).json({ error: "Crew ID is required" });
