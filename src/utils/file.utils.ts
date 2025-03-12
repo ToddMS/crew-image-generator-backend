@@ -1,28 +1,18 @@
-import path from "path";
-import fs from "fs";
-import { fileURLToPath } from "url";
-import os from "os";
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+export const getNextFileName = (baseName, extension) => {
+    const downloadsFolder = path.join(os.homedir(), 'Downloads');
+    let fileName = `${baseName}.${extension}`;
+    let filePath = path.join(downloadsFolder, fileName);
+    let counter = 1;
 
-const DOWNLOADS_DIR = path.join(os.homedir(), "Downloads");
-
-export const ensureDirectoryExists = () => {
-    if (!fs.existsSync(DOWNLOADS_DIR)) {
-        fs.mkdirSync(DOWNLOADS_DIR, { recursive: true });
+    while (fs.existsSync(filePath)) {
+        fileName = `${baseName}_${counter}.${extension}`;
+        filePath = path.join(downloadsFolder, fileName);
+        counter++;
     }
-};
 
-export const getNextFileName = (fileName: string, extension: string): string => {
-    ensureDirectoryExists();
-
-    let count = 1;
-    let newFilePath = path.join(DOWNLOADS_DIR, `${fileName}.${extension}`);
-
-    while (fs.existsSync(newFilePath)) {
-        newFilePath = path.join(DOWNLOADS_DIR, `${fileName}_${count}.${extension}`);
-        count++;
-    }
-    return newFilePath;
+    return filePath;
 };
