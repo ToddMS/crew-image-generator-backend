@@ -8,7 +8,7 @@ const __filename = fileURLToPath(import.meta.url);
 
 export const generateCrewImageHandler = async (req: Request, res: Response) => {
     try {
-        const { crewId } = req.body;
+        const { crewId, templateId, imageName } = req.body;
 
         if (!crewId) {
             return res.status(400).json({ error: "Crew ID is required" });
@@ -20,7 +20,7 @@ export const generateCrewImageHandler = async (req: Request, res: Response) => {
             return res.status(404).json({ error: "Crew not found" });
         }
 
-        const { outputPath } = await generateCrewImage(crew);
+        const { outputPath } = await generateCrewImage(crew, imageName, templateId);
         const buffer = await fs.promises.readFile(outputPath);
 
         res.setHeader("Content-Type", "image/png");

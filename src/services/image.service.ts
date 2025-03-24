@@ -3,12 +3,12 @@ import { TemplateCanvas2 } from "./templateCanvas2";
 import { getNextFileName } from "../utils/file.utils.js";
 import { Crew } from "../types/crew.types";
 
-export const generateCrewImage = async (crew: Crew, baseName: string = "boat", template: number = 1) => {
+export const generateCrewImage = async (crew: Crew, imageName: string, template: number) => {
     if (!crew || !crew.crewNames || !Array.isArray(crew.crewNames)) {
         throw new Error("Invalid crew data: 'crewNames' is missing or not an array");
     }
 
-    const outputPath = getNextFileName(baseName, "png");
+    const outputPath = getNextFileName(imageName, "png");
 
     let canvas;
     if (template === 1) {
