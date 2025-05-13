@@ -1,5 +1,8 @@
 import { BaseCanvas } from "./baseCanvas";
 import { Crew } from "../types/crew.types";
+import { loadImage, Image } from "canvas";
+import { fileURLToPath } from "url";
+import { dirname, resolve } from "path";
 
 export class TemplateCanvas1 extends BaseCanvas {
     private color1: string;
@@ -12,76 +15,74 @@ export class TemplateCanvas1 extends BaseCanvas {
     }
 
     public async draw(crew: Crew) {
+        const image = await this.loadBoatImage("../assets/boats/eight.png");
+
+        const imageSettings = {
+            scale: 0.35,
+            offsetX: 200, // move image right
+            offsetY: 30   // move image down
+        };
+
+        const imgWidth = image.width * imageSettings.scale;
+        const imgHeight = image.height * imageSettings.scale;
+        const imgX = imageSettings.offsetX;
+        const imgY = imageSettings.offsetY;
+
+        this.ctx.drawImage(image, imgX, imgY, imgWidth, imgHeight);
+
+        // Optional overlay
         this.ctx.fillStyle = this.color1;
-        this.ctx.beginPath();
-        this.ctx.moveTo(0, 0);
-        this.ctx.lineTo(this.width, 0);
-        this.ctx.lineTo(0, this.height);
-        this.ctx.closePath();
-        this.ctx.fill();
+        this.ctx.globalAlpha = 0.2;
+        this.ctx.fillRect(0, 0, this.width, this.height);
+        this.ctx.globalAlpha = 1;
 
-        this.ctx.fillStyle = this.color2;
-        this.ctx.beginPath();
-        this.ctx.moveTo(this.width, 0);
-        this.ctx.lineTo(this.width, this.height);
-        this.ctx.lineTo(0, this.height);
-        this.ctx.closePath();
-        this.ctx.fill();
-
+        // Crew info text
         this.ctx.fillStyle = "black";
-        this.ctx.fillRect(10, 10, 100, 100);
-
         this.ctx.font = "bold 24px Arial";
-        this.ctx.fillStyle = "black";
         this.ctx.textAlign = "left";
-        this.ctx.fillText(`Club: ${crew.clubName}`, 120, 40);
-        this.ctx.fillText(`Crew: ${crew.name}`, 120, 70);
-        this.ctx.fillText(`Race: ${crew.raceName}`, 120, 100);
-        this.ctx.fillText(`Boat Type: ${crew.boatType.name}`, 120, 130);
+        this.ctx.fillText(`Club: ${crew.clubName}`, 20, 40);
+        this.ctx.fillText(`Crew: ${crew.name}`, 20, 70);
+        this.ctx.fillText(`Race: ${crew.raceName}`, 20, 100);
+        this.ctx.fillText(`Boat Type: ${crew.boatType.name}`, 20, 130);
 
-        this.drawBoatAndOars(crew);
+        this.drawCrewNames(crew.crewNames, imgX, imgY, imgWidth);
     }
 
-    private drawBoatAndOars(crew: Crew) {
-        const boatWidth = 20;
-        const boatHeight = 200;
-        const oarLength = 100;
-        const oarWidth = 10;
-        const boatX = (this.width - boatWidth) / 2;
-        const boatY = this.height - boatHeight - 20;
+    private async loadBoatImage(relativePath: string): Promise<Image> {
+        const __filename = fileURLToPath(import.meta.url);
+        const __dirname = dirname(__filename);
+        const fullPath = resolve(__dirname, relativePath);
+        return await loadImage(fullPath);
+    }
 
-        this.ctx.fillStyle = "brown";
-        this.ctx.fillRect(boatX, boatY, boatWidth, boatHeight);
-
-        const crewNames = crew.crewNames;
+    private drawCrewNames(crewNames: string[], imgX: number, imgY: number, imgWidth: number) {
         const totalCrew = crewNames.length;
-        const hasCox = totalCrew % 2 !== 0;
-        const halfCrew = Math.floor(totalCrew / 2);
-        const yOffset = (boatHeight / (totalCrew + (hasCox ? 1 : 0))) + 10;
-
-        let currentY = boatY + yOffset / 2;
-
-        if (hasCox) {
-            this.ctx.fillStyle = "black";
-            this.ctx.textAlign = "center";
-            this.ctx.fillText(crewNames[0], boatX + boatWidth / 2, currentY - 30);
-            currentY += yOffset;
+        if (totalCrew !== 9) {
+            console.warn("Expected 9 crew members for an 8+ boat (including cox). Got:", totalCrew);
+            return;
         }
-
-        for (let i = 0; i < halfCrew; i++) {
-            this.ctx.fillStyle = "gray";
-            this.ctx.fillRect(boatX - oarLength, currentY - oarWidth / 2, oarLength, oarWidth);
+    
+        const spacingY = 25;
+        const baseY = imgY + 95;
+        const centerX = imgX + imgWidth / 2;
+    
+        for (let i = 1; i <= 8; i++) {
+            const name = crewNames[i];
+            const y = baseY + spacingY * (i - 1);
+    
+            // Invert alternating: stroke starts on the right
+            const side = i % 2 === 1 ? 1 : -1;
+            const x = centerX + side * 100;
+    
             this.ctx.fillStyle = "black";
-            this.ctx.textAlign = "right";
-            this.ctx.fillText(crewNames[2 * i + (hasCox ? 1 : 0)], boatX - oarLength - 10, currentY + 5);
-
-            this.ctx.fillStyle = "gray";
-            this.ctx.fillRect(boatX + boatWidth, currentY - oarWidth / 2, oarLength, oarWidth);
-            this.ctx.fillStyle = "black";
-            this.ctx.textAlign = "left";
-            this.ctx.fillText(crewNames[2 * i + 1 + (hasCox ? 1 : 0)], boatX + boatWidth + oarLength + 10, currentY + 5);
-
-            currentY += yOffset;
+            this.ctx.font = "14px Arial";
+            this.ctx.textAlign = side === -1 ? "right" : "left";
+            this.ctx.fillText(name, x, y);
         }
+    
+        // Cox name at the top center
+        this.ctx.textAlign = "center";
+        this.ctx.fillText(crewNames[0], centerX, baseY - 30);
     }
+    
 }
