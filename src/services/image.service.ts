@@ -1,4 +1,5 @@
-import { TemplateCanvas1 } from "./templateCanvas1";
+import { TemplateCanvas3 } from "./templateCanvas3.js";
+import { TemplateCanvas1 } from "./templateCanvas1.js";
 import { TemplateCanvas2 } from "./templateCanvas2";
 import { getNextFileName } from "../utils/file.utils.js";
 import { Crew } from "../types/crew.types";
