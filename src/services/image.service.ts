@@ -12,7 +12,7 @@ export const generateCrewImage = async (crew: Crew, imageName: string, template:
 
     let canvas;
     if (template === 1) {
-        canvas = new TemplateCanvas1(800, 400, "green", "pink");
+        canvas = new TemplateCanvas1("green", "pink");
     } else {
         canvas = new TemplateCanvas2(800, 400, "blue", "white");
     }
