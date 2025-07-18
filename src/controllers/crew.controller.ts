@@ -81,13 +81,13 @@ export const createCrew = async (req: Request, res: Response): Promise<void> => 
 
 export const updateCrewHandler = async (req: Request, res: Response): Promise<void> => {
     try {
-        const crewId = parseInt(req.params.id, 10);
-        if (isNaN(crewId)) {
+        const crewId = req.params.id;
+        if (!crewId) {
             res.status(400).json({ message: "Invalid crew ID" });
             return;
         }
 
-        const updatedCrew = await CrewService.updateCrew(crewId, req.body);
+        const updatedCrew = await CrewService.updateCrew(parseInt(crewId), req.body);
         if (!updatedCrew) {
             res.status(404).json({ message: "Crew not found" });
             return;
