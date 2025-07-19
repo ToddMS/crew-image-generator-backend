@@ -15,26 +15,27 @@ export class TemplateCanvas1 extends BaseCanvas {
   }
 
   public async draw(crew: Crew) {
-    this.drawDiagonalBackground();
+    this.drawGeometricBackground();
   
-    const image = await this.loadBoatImage("../assets/boats/eight.png");
+    const boatImagePath = this.getBoatImagePath(crew.boatType.value);
+    const image = await this.loadBoatImage(boatImagePath);
     const logo = await this.loadBoatImage("../assets/logo/aklogo.jpg");
   
     const scale = 0.8;
     const imgWidth = image.width * scale;
     const imgHeight = image.height * scale;
     const imgX = (this.width - imgWidth) / 2;
-    const imgY = 230; // move the boat slightly up
+    const imgY = 280;
   
     this.ctx.drawImage(image, imgX, imgY, imgWidth, imgHeight);
   
     this.drawHeader(crew);
-    this.drawCrewNames(crew.crewNames, imgX, imgY, imgWidth);
+    this.drawCrewNamesAlongOars(crew, imgX, imgY, imgWidth, imgHeight);
   
     // === Draw club logo at bottom center ===
     const logoSize = 160;
-    const logoX = this.width - logoSize - 60; // 60px from right edge
-    const logoY = this.height - logoSize - 60; // 60px from bottom edge     
+    const logoX = this.width - logoSize - 60;
+    const logoY = this.height - logoSize - 60;     
   
     this.ctx.drawImage(logo, logoX, logoY, logoSize, logoSize);
   }
@@ -51,26 +52,59 @@ export class TemplateCanvas1 extends BaseCanvas {
     this.ctx.fillText(`${crew.name} | ${crew.boatType.value}`, 60, 180);
   }
 
-  private drawDiagonalBackground() {
+  private drawGeometricBackground() {
     const w = this.width;
     const h = this.height;
 
-    // Diagonal split: top-left (color1), bottom-right (color2)
-    this.ctx.fillStyle = this.color1;
-    this.ctx.beginPath();
-    this.ctx.moveTo(0, 0);
-    this.ctx.lineTo(w, 0);
-    this.ctx.lineTo(0, h);
-    this.ctx.closePath();
-    this.ctx.fill();
-
+    // Base background
     this.ctx.fillStyle = this.color2;
+    this.ctx.fillRect(0, 0, w, h);
+
+    // Geometric hexagon pattern
+    this.ctx.fillStyle = this.color1;
+    const hexSize = 80;
+    const hexSpacing = hexSize * 1.5;
+    
+    for (let x = -hexSize; x < w + hexSize; x += hexSpacing) {
+      for (let y = -hexSize; y < h + hexSize; y += hexSpacing * 0.866) {
+        const offsetX = (y / (hexSpacing * 0.866)) % 2 === 0 ? 0 : hexSpacing / 2;
+        this.drawHexagon(x + offsetX, y, hexSize * 0.3);
+      }
+    }
+
+    // Gradient overlay
+    const gradient = this.ctx.createLinearGradient(0, 0, w, h);
+    gradient.addColorStop(0, `${this.color1}20`);
+    gradient.addColorStop(1, `${this.color2}40`);
+    this.ctx.fillStyle = gradient;
+    this.ctx.fillRect(0, 0, w, h);
+  }
+
+  private drawHexagon(x: number, y: number, size: number) {
     this.ctx.beginPath();
-    this.ctx.moveTo(w, 0);
-    this.ctx.lineTo(w, h);
-    this.ctx.lineTo(0, h);
+    for (let i = 0; i < 6; i++) {
+      const angle = (i * Math.PI) / 3;
+      const px = x + size * Math.cos(angle);
+      const py = y + size * Math.sin(angle);
+      if (i === 0) this.ctx.moveTo(px, py);
+      else this.ctx.lineTo(px, py);
+    }
     this.ctx.closePath();
     this.ctx.fill();
+  }
+
+  private getBoatImagePath(boatType: string): string {
+    const boatImageMap: { [key: string]: string } = {
+      '8+': '../assets/boats/eight.png',
+      '4+': '../assets/boats/four.png',
+      '4-': '../assets/boats/four.png',
+      '4x': '../assets/boats/quad.png',
+      '2x': '../assets/boats/double.png',
+      '2-': '../assets/boats/pair.png',
+      '1x': '../assets/boats/single.png'
+    };
+    
+    return boatImageMap[boatType] || '../assets/boats/eight.png'; // fallback to eight
   }
 
   private async loadBoatImage(relativePath: string): Promise<Image> {
@@ -80,45 +114,110 @@ export class TemplateCanvas1 extends BaseCanvas {
     return await loadImage(fullPath);
   }
 
-  private drawCrewNames(crewNames: string[], imgX: number, imgY: number, imgWidth: number) {
-    if (crewNames.length !== 9) {
-      console.warn("Expected 9 crew members (8 rowers + cox). Got:", crewNames.length);
-      return;
-    }
-  
+  private drawCrewNamesAlongOars(crew: Crew, imgX: number, imgY: number, imgWidth: number, imgHeight: number) {
+    const boatType = crew.boatType.value;
+    const crewNames = crew.crewNames;
     const centerX = imgX + imgWidth / 2;
-    const baseY = imgY + 250;
-    const spacingY = 48;
-    const nameOffset = 230;
-  
-    this.ctx.font = "bold 28px Arial";
-    this.ctx.fillStyle = "black";
-  
+    
+    this.ctx.font = "bold 24px Arial";
+    this.ctx.fillStyle = "white";
+    this.ctx.strokeStyle = "black";
+    this.ctx.lineWidth = 3;
+
+    if (boatType === '8+') {
+      this.drawEightCrewNames(crewNames, centerX, imgY, imgHeight);
+    } else if (boatType === '4+' || boatType === '4-' || boatType === '4x') {
+      this.drawFourCrewNames(crewNames, centerX, imgY, imgHeight, boatType);
+    } else if (boatType === '2x' || boatType === '2-') {
+      this.drawDoubleCrewNames(crewNames, centerX, imgY, imgHeight);
+    } else if (boatType === '1x') {
+      this.drawSingleCrewName(crewNames, centerX, imgY, imgHeight);
+    }
+  }
+
+  private drawEightCrewNames(crewNames: string[], centerX: number, imgY: number, imgHeight: number) {
+    const baseY = imgY + 100;
+    const spacingY = (imgHeight - 200) / 7;
+    const oarLength = 200;
+
+    // Cox first
+    if (crewNames[0]) {
+      this.drawNameWithBackground(crewNames[0], centerX, baseY - 50);
+    }
+
+    // Rowers 1-8 (crewNames[1] to crewNames[8])
     for (let i = 1; i <= 8; i++) {
       const name = crewNames[i];
-      const seat = 9 - i;
-      const baseNameY = baseY + (i - 1) * spacingY;
-      const side = i % 2 === 0 ? "right" : "left";
-  
-      const nameY = side === "right" ? baseNameY - 20 : baseNameY + 20;
-      const nameX = side === "right" ? centerX + nameOffset : centerX - nameOffset;
-  
-      // Name
-      this.ctx.textAlign = side === "right" ? "left" : "right";
-      this.ctx.fillText(name, nameX, nameY);
-  
-      // Seat number
-      this.ctx.textAlign = "center";
-      this.ctx.fillText(`${seat}`, centerX, baseNameY);
+      if (!name) continue;
+      
+      const y = baseY + (i - 1) * spacingY;
+      const isStarboard = i % 2 === 1; // 1,3,5,7 starboard (right), 2,4,6,8 port (left)
+      const x = centerX + (isStarboard ? oarLength : -oarLength);
+      
+      this.drawNameWithBackground(name, x, y);
     }
-  
-    // Cox
-    const cox = crewNames[0];
-    const coxX = centerX + 85;
-    const coxY = baseY - 75;
-  
+  }
+
+  private drawFourCrewNames(crewNames: string[], centerX: number, imgY: number, imgHeight: number, boatType: string) {
+    const baseY = imgY + 80;
+    const spacingY = (imgHeight - 160) / 3;
+    const oarLength = 180;
+    const hasCox = boatType === '4+';
+
+    if (hasCox && crewNames[0]) {
+      this.drawNameWithBackground(crewNames[0], centerX, baseY - 40);
+    }
+
+    const startIdx = hasCox ? 1 : 0;
+    for (let i = 0; i < 4; i++) {
+      const name = crewNames[startIdx + i];
+      if (!name) continue;
+      
+      const y = baseY + i * spacingY;
+      const isStarboard = i % 2 === 0;
+      const x = centerX + (isStarboard ? oarLength : -oarLength);
+      
+      this.drawNameWithBackground(name, x, y);
+    }
+  }
+
+  private drawDoubleCrewNames(crewNames: string[], centerX: number, imgY: number, imgHeight: number) {
+    const baseY = imgY + imgHeight / 2;
+    const oarLength = 160;
+
+    for (let i = 0; i < 2; i++) {
+      const name = crewNames[i];
+      if (!name) continue;
+      
+      const y = baseY + (i - 0.5) * 60;
+      const isStarboard = i === 0;
+      const x = centerX + (isStarboard ? oarLength : -oarLength);
+      
+      this.drawNameWithBackground(name, x, y);
+    }
+  }
+
+  private drawSingleCrewName(crewNames: string[], centerX: number, imgY: number, imgHeight: number) {
+    const name = crewNames[0];
+    if (name) {
+      this.drawNameWithBackground(name, centerX, imgY + imgHeight / 2);
+    }
+  }
+
+  private drawNameWithBackground(name: string, x: number, y: number) {
+    const textWidth = this.ctx.measureText(name).width;
+    const padding = 8;
+    const bgWidth = textWidth + padding * 2;
+    const bgHeight = 32;
+
+    // Background
+    this.ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+    this.ctx.fillRect(x - bgWidth / 2, y - bgHeight / 2, bgWidth, bgHeight);
+
+    // Text
+    this.ctx.fillStyle = "white";
     this.ctx.textAlign = "center";
-    this.ctx.fillText(cox, coxX, coxY);
+    this.ctx.fillText(name, x, y + 6);
   }
   
   

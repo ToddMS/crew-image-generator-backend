@@ -15,14 +15,15 @@ export class TemplateCanvas3 extends BaseCanvas {
     }
 
     public async draw(crew: Crew) {
-        this.drawDiagonalBackground();
+        this.drawRadialBurstBackground();
     
-        const image = await this.loadBoatImage("../assets/boats/eight.png");
+        const boatImagePath = this.getBoatImagePath(crew.boatType.value);
+        const image = await this.loadBoatImage(boatImagePath);
     
         const imageSettings = {
-            scale: 0.65, // ↑ from 0.5
-            offsetX: (this.width - image.width * 0.65) / 2,
-            offsetY: 260
+            scale: 0.75,
+            offsetX: (this.width - image.width * 0.75) / 2,
+            offsetY: 320
           };          
     
         const imgWidth = image.width * imageSettings.scale;
@@ -33,44 +34,77 @@ export class TemplateCanvas3 extends BaseCanvas {
         this.ctx.drawImage(image, imgX, imgY, imgWidth, imgHeight);
     
         // === Race, Boat Name, Boat Type ===
-        this.ctx.fillStyle = "black";
-        this.ctx.textAlign = "left";
+        this.ctx.fillStyle = "white";
+        this.ctx.strokeStyle = "black";
+        this.ctx.lineWidth = 3;
+        this.ctx.textAlign = "center";
     
-        this.ctx.font = "bold 48px Arial"; // ↑ from 24px
-        this.ctx.fillText(`${crew.raceName}`, 40, 80); // ↑ slightly lower to make space
+        this.ctx.font = "bold 42px Arial";
+        this.ctx.strokeText(`${crew.raceName}`, this.width / 2, 100);
+        this.ctx.fillText(`${crew.raceName}`, this.width / 2, 100);
 
-        this.ctx.font = "36px Arial"; // ↑ from 20px
-        this.ctx.fillText(`${crew.name} | ${crew.boatType.value}`, 40, 130);
+        this.ctx.font = "32px Arial";
+        this.ctx.strokeText(`${crew.name} | ${crew.boatType.value}`, this.width / 2, 150);
+        this.ctx.fillText(`${crew.name} | ${crew.boatType.value}`, this.width / 2, 150);
 
+        this.ctx.strokeText(`${crew.clubName}`, this.width / 2, 200);
+        this.ctx.fillText(`${crew.clubName}`, this.width / 2, 200);
 
-        this.drawCrewNames(crew.crewNames, imgX, imgY, imgWidth);
+        this.drawCrewNamesAlongOars(crew, imgX, imgY, imgWidth, imgHeight);
     }
     
 
-    private drawDiagonalBackground() {
+    private drawRadialBurstBackground() {
         const w = this.width;
         const h = this.height;
+        const centerX = w / 2;
+        const centerY = h / 2;
     
-        // Diagonal from top-left to bottom-right
-        // Triangle 1 (top-left half)
-        this.ctx.fillStyle = this.color1;
-        this.ctx.beginPath();
-        this.ctx.moveTo(0, 0);
-        this.ctx.lineTo(w, 0);
-        this.ctx.lineTo(0, h);
-        this.ctx.closePath();
-        this.ctx.fill();
+        // Radial gradient base
+        const radialGradient = this.ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, Math.max(w, h));
+        radialGradient.addColorStop(0, this.color2);
+        radialGradient.addColorStop(1, this.color1);
+        this.ctx.fillStyle = radialGradient;
+        this.ctx.fillRect(0, 0, w, h);
     
-        // Triangle 2 (bottom-right half)
-        this.ctx.fillStyle = this.color2;
-        this.ctx.beginPath();
-        this.ctx.moveTo(w, 0);
-        this.ctx.lineTo(w, h);
-        this.ctx.lineTo(0, h);
-        this.ctx.closePath();
-        this.ctx.fill();
+        // Burst rays
+        this.ctx.fillStyle = `${this.color1}40`;
+        const numRays = 24;
+        const maxRadius = Math.max(w, h);
+        
+        for (let i = 0; i < numRays; i++) {
+            const angle = (i / numRays) * Math.PI * 2;
+            const rayWidth = Math.PI / 36; // Ray width in radians
+            
+            this.ctx.beginPath();
+            this.ctx.moveTo(centerX, centerY);
+            this.ctx.arc(centerX, centerY, maxRadius, angle - rayWidth, angle + rayWidth);
+            this.ctx.closePath();
+            this.ctx.fill();
+        }
+
+        // Central highlight
+        const centerGradient = this.ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, 200);
+        centerGradient.addColorStop(0, `${this.color2}80`);
+        centerGradient.addColorStop(1, 'transparent');
+        this.ctx.fillStyle = centerGradient;
+        this.ctx.fillRect(0, 0, w, h);
     }  
     
+
+    private getBoatImagePath(boatType: string): string {
+        const boatImageMap: { [key: string]: string } = {
+            '8+': '../assets/boats/eight.png',
+            '4+': '../assets/boats/four.png',
+            '4-': '../assets/boats/four.png',
+            '4x': '../assets/boats/quad.png',
+            '2x': '../assets/boats/double.png',
+            '2-': '../assets/boats/pair.png',
+            '1x': '../assets/boats/single.png'
+        };
+        
+        return boatImageMap[boatType] || '../assets/boats/eight.png'; // fallback to eight
+    }
 
     private async loadBoatImage(relativePath: string): Promise<Image> {
         const __filename = fileURLToPath(import.meta.url);
@@ -79,47 +113,117 @@ export class TemplateCanvas3 extends BaseCanvas {
         return await loadImage(fullPath);
     }
 
-    private drawCrewNames(crewNames: string[], imgX: number, imgY: number, imgWidth: number) {
-        const totalCrew = crewNames.length;
-        if (totalCrew !== 9) {
-            console.warn("Expected 9 crew members for an 8+ boat (including cox). Got:", totalCrew);
-            return;
-        }
-    
-        const spacingY = 38;
-        const baseY = imgY + 100;
+    private drawCrewNamesAlongOars(crew: Crew, imgX: number, imgY: number, imgWidth: number, imgHeight: number) {
+        const boatType = crew.boatType.value;
+        const crewNames = crew.crewNames;
         const centerX = imgX + imgWidth / 2;
-    
+        
         this.ctx.font = "bold 22px Arial";
-    
+
+        if (boatType === '8+') {
+            this.drawEightCrewNames(crewNames, centerX, imgY, imgHeight);
+        } else if (boatType === '4+' || boatType === '4-' || boatType === '4x') {
+            this.drawFourCrewNames(crewNames, centerX, imgY, imgHeight, boatType);
+        } else if (boatType === '2x' || boatType === '2-') {
+            this.drawDoubleCrewNames(crewNames, centerX, imgY, imgHeight);
+        } else if (boatType === '1x') {
+            this.drawSingleCrewName(crewNames, centerX, imgY, imgHeight);
+        }
+    }
+
+    private drawEightCrewNames(crewNames: string[], centerX: number, imgY: number, imgHeight: number) {
+        const baseY = imgY + 80;
+        const spacingY = (imgHeight - 160) / 7;
+        const oarLength = 180;
+
+        // Cox first
+        if (crewNames[0]) {
+            this.drawNameWithBurstBackground(crewNames[0], centerX, baseY - 40);
+        }
+
+        // Rowers 1-8
         for (let i = 1; i <= 8; i++) {
             const name = crewNames[i];
-            const y = baseY + spacingY * (i - 1);
-    
-            const side = i % 2 === 1 ? 1 : -1;
-            const x = centerX + side * 130; // increased name offset
-    
-            const textWidth = this.ctx.measureText(name).width;
-            const padding = 8;
-            const bgX = side === -1 ? x - textWidth - padding : x - padding;
-            const bgY = y - 18;
-            const bgWidth = textWidth + padding * 2;
-            const bgHeight = 32;
-    
-            // Name text
-            this.ctx.fillStyle = "black";
-            this.ctx.textAlign = side === -1 ? "right" : "left";
-            this.ctx.fillText(name, x, y);
+            if (!name) continue;
+            
+            const y = baseY + (i - 1) * spacingY;
+            const isStarboard = i % 2 === 1;
+            const x = centerX + (isStarboard ? oarLength : -oarLength);
+            
+            this.drawNameWithBurstBackground(name, x, y);
         }
-    
-        // Cox name
-        const cox = crewNames[0];
-        const coxY = baseY - 45;
-        const coxX = centerX;
-    
-        this.ctx.fillStyle = "black";
+    }
+
+    private drawFourCrewNames(crewNames: string[], centerX: number, imgY: number, imgHeight: number, boatType: string) {
+        const baseY = imgY + 60;
+        const spacingY = (imgHeight - 120) / 3;
+        const oarLength = 160;
+        const hasCox = boatType === '4+';
+
+        if (hasCox && crewNames[0]) {
+            this.drawNameWithBurstBackground(crewNames[0], centerX, baseY - 30);
+        }
+
+        const startIdx = hasCox ? 1 : 0;
+        for (let i = 0; i < 4; i++) {
+            const name = crewNames[startIdx + i];
+            if (!name) continue;
+            
+            const y = baseY + i * spacingY;
+            const isStarboard = i % 2 === 0;
+            const x = centerX + (isStarboard ? oarLength : -oarLength);
+            
+            this.drawNameWithBurstBackground(name, x, y);
+        }
+    }
+
+    private drawDoubleCrewNames(crewNames: string[], centerX: number, imgY: number, imgHeight: number) {
+        const baseY = imgY + imgHeight / 2;
+        const oarLength = 140;
+
+        for (let i = 0; i < 2; i++) {
+            const name = crewNames[i];
+            if (!name) continue;
+            
+            const y = baseY + (i - 0.5) * 50;
+            const isStarboard = i === 0;
+            const x = centerX + (isStarboard ? oarLength : -oarLength);
+            
+            this.drawNameWithBurstBackground(name, x, y);
+        }
+    }
+
+    private drawSingleCrewName(crewNames: string[], centerX: number, imgY: number, imgHeight: number) {
+        const name = crewNames[0];
+        if (name) {
+            this.drawNameWithBurstBackground(name, centerX, imgY + imgHeight / 2);
+        }
+    }
+
+    private drawNameWithBurstBackground(name: string, x: number, y: number) {
+        const textWidth = this.ctx.measureText(name).width;
+        const padding = 12;
+        const bgWidth = textWidth + padding * 2;
+        const bgHeight = 36;
+
+        // Glowing background effect
+        this.ctx.shadowColor = this.color1;
+        this.ctx.shadowBlur = 10;
+        this.ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
+        this.ctx.beginPath();
+        this.ctx.roundRect(x - bgWidth / 2, y - bgHeight / 2, bgWidth, bgHeight, 18);
+        this.ctx.fill();
+        this.ctx.shadowBlur = 0;
+
+        // Bold border
+        this.ctx.strokeStyle = this.color1;
+        this.ctx.lineWidth = 3;
+        this.ctx.stroke();
+
+        // Text
+        this.ctx.fillStyle = this.color1;
         this.ctx.textAlign = "center";
-        this.ctx.fillText(cox, coxX, coxY);
+        this.ctx.fillText(name, x, y + 6);
     }
     
     

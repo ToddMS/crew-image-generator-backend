@@ -4,20 +4,24 @@ import { TemplateCanvas2 } from "./templateCanvas2.js";
 import { getNextFileName } from "../utils/file.utils.js";
 import { Crew } from "../types/crew.types.js";
 
-export const generateCrewImage = async (crew: Crew, imageName: string, template: number) => {
+export const generateCrewImage = async (crew: Crew, imageName: string, template: number, colors?: { primary: string; secondary: string }) => {
     if (!crew || !crew.crewNames || !Array.isArray(crew.crewNames)) {
         throw new Error("Invalid crew data: 'crewNames' is missing or not an array");
     }
 
     const outputPath = getNextFileName(imageName, "png");
 
+    // Use provided colors or defaults
+    const primaryColor = colors?.primary || "#5E98C2";
+    const secondaryColor = colors?.secondary || "#ffffff";
+
     let canvas;
     if (template === 1) {
-        canvas = new TemplateCanvas1("green", "pink");
+        canvas = new TemplateCanvas1(primaryColor, secondaryColor);
     } else if (template === 2) {
-        canvas = new TemplateCanvas2(800, 400, "blue", "white");
+        canvas = new TemplateCanvas2(800, 400, primaryColor, secondaryColor);
     } else {
-        canvas = new TemplateCanvas3("navy", "gold");
+        canvas = new TemplateCanvas3(primaryColor, secondaryColor);
     }
 
     await canvas.draw(crew);
