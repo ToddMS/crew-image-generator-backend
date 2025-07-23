@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import crewRoutes from './routes/crew.routes.js';
 import authRoutes from './routes/auth.routes.js';
+import clubPresetsRoutes from './routes/clubPresets.routes.js';
 
 // Load environment variables
 dotenv.config();
@@ -24,6 +25,7 @@ app.options('*', cors());
 // Routes
 app.use('/api/crews', crewRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/club-presets', clubPresetsRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
