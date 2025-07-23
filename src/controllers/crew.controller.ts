@@ -34,7 +34,8 @@ export const generateCrewImageHandler = async (req: Request, res: Response) => {
 
 export const getAllCrews = async (req: Request, res: Response) => {
     try {
-        const crews = await CrewService.getCrews();
+        const userId = (req as any).userId; // Set by auth middleware
+        const crews = await CrewService.getCrewsByUserId(userId);
         res.json(crews);
     } catch (error) {
         console.error("Error fetching crews:", error);
@@ -65,14 +66,16 @@ export const getAllCrews = async (req: Request, res: Response) => {
 export const createCrew = async (req: Request, res: Response): Promise<void> => {
     try {
         const { name, crewNames, boatType, clubName, raceName } = req.body;
+        const userId = (req as any).userId; // Set by auth middleware
 
         if (!name || !crewNames || !boatType || !clubName || !raceName) {
             res.status(400).json({ error: "Missing required fields" });
             return;
         }
 
-        const crewId = await CrewService.addCrew(req.body);
-        res.status(201).json({ id: crewId, ...req.body });
+        const crewData = { ...req.body, userId };
+        const crewId = await CrewService.addCrew(crewData);
+        res.status(201).json({ id: crewId, ...crewData });
     } catch (error) {
         console.error("Server error creating crew:", error);
         res.status(500).json({ error: "Internal Server Error" });
@@ -82,14 +85,16 @@ export const createCrew = async (req: Request, res: Response): Promise<void> => 
 export const updateCrewHandler = async (req: Request, res: Response): Promise<void> => {
     try {
         const crewId = req.params.id;
+        const userId = (req as any).userId; // Set by auth middleware
+        
         if (!crewId) {
             res.status(400).json({ message: "Invalid crew ID" });
             return;
         }
 
-        const updatedCrew = await CrewService.updateCrew(parseInt(crewId), req.body);
+        const updatedCrew = await CrewService.updateCrew(parseInt(crewId), userId, req.body);
         if (!updatedCrew) {
-            res.status(404).json({ message: "Crew not found" });
+            res.status(404).json({ message: "Crew not found or not authorized" });
             return;
         }
 
@@ -102,6 +107,7 @@ export const updateCrewHandler = async (req: Request, res: Response): Promise<vo
 export const removeCrew = async (req: Request, res: Response): Promise<void> => {
     try {
         const id = req.params.id;
+        const userId = (req as any).userId; // Set by auth middleware
 
         if (!id) {
             res.status(400).json({ message: "No ID provided" });
@@ -115,7 +121,11 @@ export const removeCrew = async (req: Request, res: Response): Promise<void> => 
             return;
         }
 
-        await CrewService.deleteCrew(crewId);
+        const deleted = await CrewService.deleteCrew(crewId, userId);
+        if (!deleted) {
+            res.status(404).json({ message: "Crew not found or not authorized" });
+            return;
+        }
 
         res.status(200).json({ message: "Crew deleted successfully" });
     } catch (error) {

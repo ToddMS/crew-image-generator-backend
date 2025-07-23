@@ -43,7 +43,7 @@ export class CrewService {
     }
 
     async getCrews(): Promise<Crew[]> {
-        console.log("Getting Crews");
+        console.log("Getting all Crews (deprecated - use getCrewsByUserId)");
         const connection = await pool.getConnection();
         try {
             const [rows] = await connection.query<CrewQueryResult[]>(`
@@ -67,6 +67,38 @@ export class CrewService {
         } catch (error) {
             console.error('Database error:', error);
             throw new Error('Failed to fetch crews');
+        } finally {
+            connection.release();
+        }
+    }
+
+    async getCrewsByUserId(userId: number): Promise<Crew[]> {
+        console.log(`Getting crews for user: ${userId}`);
+        const connection = await pool.getConnection();
+        try {
+            const [rows] = await connection.query<CrewQueryResult[]>(`
+                SELECT 
+                    c.id, 
+                    c.name, 
+                    c.club_name, 
+                    c.race_name,
+                    b.id as boatTypeId, 
+                    b.value as boatTypeValue, 
+                    b.seats as boatTypeSeats, 
+                    b.name as boatTypeName,
+                    GROUP_CONCAT(cm.name ORDER BY cm.seat_number) as crewNames
+                FROM Crews c
+                JOIN BoatTypes b ON c.boat_type_id = b.id
+                LEFT JOIN CrewMembers cm ON c.id = cm.crew_id
+                WHERE c.user_id = ?
+                GROUP BY c.id
+                ORDER BY c.created_at DESC
+            `, [userId]);
+
+            return rows.map(row => this.mapToCrewResponse(row));
+        } catch (error) {
+            console.error('Database error:', error);
+            throw new Error('Failed to fetch user crews');
         } finally {
             connection.release();
         }
@@ -104,21 +136,21 @@ export class CrewService {
         }
     }    
 
-    async addCrew(crew: Omit<Crew, 'id'>): Promise<number> {
+    async addCrew(crew: any): Promise<number> {
         console.log("Adding crew: ", crew);
         const connection = await pool.getConnection();
         try {
             await connection.beginTransaction();
 
             const [crewResult] = await connection.query<ResultSetHeader>(
-                "INSERT INTO Crews (name, club_name, race_name, boat_type_id) VALUES (?, ?, ?, ?)",
-                [crew.name, crew.clubName, crew.raceName, crew.boatType.id]
+                "INSERT INTO Crews (name, club_name, race_name, boat_type_id, user_id) VALUES (?, ?, ?, ?, ?)",
+                [crew.name, crew.clubName, crew.raceName, crew.boatType.id, crew.userId]
             );
 
             const crewId = crewResult.insertId;
 
-            if (crew.crewNames.length > 0) {
-                const crewMemberValues = crew.crewNames.map((name, index) => [crewId, name, index]);
+            if (crew.crewNames && crew.crewNames.length > 0) {
+                const crewMemberValues = crew.crewNames.map((name: string, index: number) => [crewId, name, index]);
                 await connection.query(
                     "INSERT INTO CrewMembers (crew_id, name, seat_number) VALUES ?",
                     [crewMemberValues]
@@ -135,15 +167,16 @@ export class CrewService {
         }
     }
 
-    async updateCrew(id: number, crew: Crew): Promise<boolean> {
+    async updateCrew(id: number, userId: number, crew: Crew): Promise<boolean> {
         console.log("Updating crew: ", id, crew);
         const connection = await pool.getConnection();
         try {
             await connection.beginTransaction();
 
+            // Only update crews owned by the user
             const [result] = await connection.query<ResultSetHeader>(
-                "UPDATE Crews SET name = ?, club_name = ?, race_name = ?, boat_type_id = ? WHERE id = ?",
-                [crew.name, crew.clubName, crew.raceName, crew.boatType.id, id]
+                "UPDATE Crews SET name = ?, club_name = ?, race_name = ?, boat_type_id = ? WHERE id = ? AND user_id = ?",
+                [crew.name, crew.clubName, crew.raceName, crew.boatType.id, id, userId]
             );
 
             if (result.affectedRows === 0) {
@@ -171,14 +204,25 @@ export class CrewService {
         }
     }
 
-    async deleteCrew(id: number): Promise<void> {
+    async deleteCrew(id: number, userId: number): Promise<boolean> {
         console.log("Deleting crew: ", id);
         const connection = await pool.getConnection();
         try {
             await connection.beginTransaction();
-            await connection.query("DELETE FROM CrewMembers WHERE crew_id = ?", [id]);
-            await connection.query("DELETE FROM Crews WHERE id = ?", [id]);
+            
+            // Only delete crews owned by the user
+            const [result] = await connection.query<ResultSetHeader>(
+                "DELETE FROM Crews WHERE id = ? AND user_id = ?", 
+                [id, userId]
+            );
+            
+            if (result.affectedRows === 0) {
+                await connection.rollback();
+                return false;
+            }
+            
             await connection.commit();
+            return true;
         } catch (error) {
             await connection.rollback();
             throw error;
