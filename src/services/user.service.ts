@@ -11,14 +11,15 @@ class UserService {
 
       // Insert user
       const [userResult] = await connection.execute<ResultSetHeader>(
-        `INSERT INTO Users (google_id, email, name, profile_picture, club_name) 
-         VALUES (?, ?, ?, ?, ?)`,
+        `INSERT INTO Users (google_id, email, name, profile_picture, club_name, password_hash) 
+         VALUES (?, ?, ?, ?, ?, ?)`,
         [
-          userData.google_id, 
+          userData.google_id || null, 
           userData.email, 
           userData.name, 
           userData.profile_picture || null, 
-          userData.club_name || null
+          userData.club_name || null,
+          userData.password_hash || null
         ]
       );
 
