@@ -40,3 +40,7 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+# Generated/uploaded images
+src/assets/saved-images/
+src/assets/club-logos/
