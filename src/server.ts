@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
 import crewRoutes from './routes/crew.routes.js';
 import authRoutes from './routes/auth.routes.js';
 import clubPresetsRoutes from './routes/clubPresets.routes.js';
@@ -21,6 +22,9 @@ app.use(express.json({ limit: '10mb' }));
 
 // Handle preflight requests
 app.options('*', cors());
+
+// Static file serving for saved images
+app.use('/api/saved-images', express.static(path.join(process.cwd(), 'src', 'assets', 'saved-images')));
 
 // Routes
 app.use('/api/crews', crewRoutes);

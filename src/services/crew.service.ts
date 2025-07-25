@@ -7,6 +7,7 @@ interface CrewQueryResult extends RowDataPacket {
     name: string;
     club_name: string;
     race_name: string;
+    user_id: number;
     boatTypeId: number;
     boatTypeValue: string;
     boatTypeSeats: number;
@@ -26,12 +27,13 @@ export class CrewService {
         return CrewService.instance;
     }
 
-    private mapToCrewResponse(row: CrewQueryResult): Crew {
+    private mapToCrewResponse(row: CrewQueryResult): Crew & { userId?: number } {
         return {
             id: row.id.toString(),
             name: row.name,
             clubName: row.club_name,
             raceName: row.race_name,
+            userId: row.user_id,
             boatType: {
                 id: row.boatTypeId,
                 value: row.boatTypeValue,
@@ -52,6 +54,7 @@ export class CrewService {
                     c.name, 
                     c.club_name, 
                     c.race_name,
+                    c.user_id,
                     b.id as boatTypeId, 
                     b.value as boatTypeValue, 
                     b.seats as boatTypeSeats, 
@@ -82,6 +85,7 @@ export class CrewService {
                     c.name, 
                     c.club_name, 
                     c.race_name,
+                    c.user_id,
                     b.id as boatTypeId, 
                     b.value as boatTypeValue, 
                     b.seats as boatTypeSeats, 
@@ -114,6 +118,7 @@ export class CrewService {
                     c.name, 
                     c.club_name, 
                     c.race_name,
+                    c.user_id,
                     b.id as boatTypeId, 
                     b.value as boatTypeValue, 
                     b.seats as boatTypeSeats, 
@@ -226,6 +231,113 @@ export class CrewService {
         } catch (error) {
             await connection.rollback();
             throw error;
+        } finally {
+            connection.release();
+        }
+    }
+
+    async saveCrewImage(imageData: any): Promise<number> {
+        console.log("Saving crew image:", imageData);
+        const connection = await pool.getConnection();
+        try {
+            const [result] = await connection.query<ResultSetHeader>(
+                `INSERT INTO SavedImages 
+                (crew_id, user_id, image_name, template_id, primary_color, secondary_color, 
+                 image_filename, image_url, file_size, mime_type) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [
+                    imageData.crewId,
+                    imageData.userId,
+                    imageData.imageName,
+                    imageData.templateId,
+                    imageData.primaryColor,
+                    imageData.secondaryColor,
+                    imageData.imageFilename,
+                    imageData.imageUrl,
+                    imageData.fileSize,
+                    imageData.mimeType
+                ]
+            );
+            return result.insertId;
+        } catch (error) {
+            console.error('Database error saving image:', error);
+            throw new Error('Failed to save image');
+        } finally {
+            connection.release();
+        }
+    }
+
+    async getSavedImagesByCrewId(crewId: number): Promise<any[]> {
+        console.log(`Getting saved images for crew: ${crewId}`);
+        const connection = await pool.getConnection();
+        try {
+            const [rows] = await connection.query<RowDataPacket[]>(
+                `SELECT 
+                    id, crew_id, user_id, image_name, template_id, 
+                    primary_color, secondary_color, image_filename, 
+                    image_url, file_size, mime_type, created_at
+                FROM SavedImages 
+                WHERE crew_id = ? 
+                ORDER BY created_at DESC`,
+                [crewId]
+            );
+            return rows;
+        } catch (error) {
+            console.error('Database error fetching saved images:', error);
+            throw new Error('Failed to fetch saved images');
+        } finally {
+            connection.release();
+        }
+    }
+
+    async deleteSavedImage(imageId: number, userId: number): Promise<boolean> {
+        console.log(`Deleting saved image: ${imageId} for user: ${userId}`);
+        const connection = await pool.getConnection();
+        try {
+            await connection.beginTransaction();
+
+            // Get image info to delete file
+            const [imageRows] = await connection.query<RowDataPacket[]>(
+                'SELECT image_filename FROM SavedImages WHERE id = ? AND user_id = ?',
+                [imageId, userId]
+            );
+
+            if (imageRows.length === 0) {
+                await connection.rollback();
+                return false;
+            }
+
+            // Delete from database
+            const [result] = await connection.query<ResultSetHeader>(
+                'DELETE FROM SavedImages WHERE id = ? AND user_id = ?',
+                [imageId, userId]
+            );
+
+            if (result.affectedRows === 0) {
+                await connection.rollback();
+                return false;
+            }
+
+            // Delete physical file
+            try {
+                const fs = await import('fs');
+                const path = await import('path');
+                const filename = imageRows[0].image_filename;
+                const filePath = path.join(process.cwd(), 'src', 'assets', 'saved-images', filename);
+                if (fs.existsSync(filePath)) {
+                    fs.unlinkSync(filePath);
+                }
+            } catch (fileError) {
+                console.error('Error deleting image file:', fileError);
+                // Continue even if file deletion fails
+            }
+
+            await connection.commit();
+            return true;
+        } catch (error) {
+            await connection.rollback();
+            console.error('Database error deleting saved image:', error);
+            throw new Error('Failed to delete saved image');
         } finally {
             connection.release();
         }

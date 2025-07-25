@@ -3,6 +3,8 @@ import CrewService from "../services/crew.service.js";
 import { fileURLToPath } from "url";
 import { generateCrewImage } from "../services/image.service.js";
 import fs from "fs";
+import path from "path";
+import multer from "multer";
 
 const __filename = fileURLToPath(import.meta.url);
 
@@ -131,6 +133,139 @@ export const removeCrew = async (req: Request, res: Response): Promise<void> => 
     } catch (error) {
         console.error("Error deleting crew:", error);
         res.status(500).json({ error: "Error deleting crew" });
+    }
+};
+
+// Configure multer for image uploads
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        const uploadsDir = path.join(process.cwd(), 'src', 'assets', 'saved-images');
+        // Create directory if it doesn't exist
+        if (!fs.existsSync(uploadsDir)) {
+            fs.mkdirSync(uploadsDir, { recursive: true });
+        }
+        cb(null, uploadsDir);
+    },
+    filename: (req, file, cb) => {
+        const timestamp = Date.now();
+        const crewId = req.body.crewId;
+        const imageName = req.body.imageName || 'image';
+        const sanitizedName = imageName.replace(/[^a-zA-Z0-9_-]/g, '_');
+        cb(null, `crew_${crewId}_${sanitizedName}_${timestamp}.png`);
+    }
+});
+
+export const upload = multer({ 
+    storage: storage,
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype.startsWith('image/')) {
+            cb(null, true);
+        } else {
+            cb(null, false);
+        }
+    }
+});
+
+export const saveCrewImage = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { crewId, imageName, templateId, colors } = req.body;
+        const userId = (req as any).userId;
+        const file = req.file;
+
+        if (!crewId || !imageName || !templateId || !file) {
+            res.status(400).json({ error: "Missing required fields or image file" });
+            return;
+        }
+
+        // Verify crew belongs to user
+        const crew = await CrewService.getCrewById(crewId);
+        if (!crew || (crew as any).userId !== userId) {
+            res.status(404).json({ error: "Crew not found or not authorized" });
+            return;
+        }
+
+        // Parse colors if provided
+        let parsedColors = null;
+        if (colors) {
+            try {
+                parsedColors = typeof colors === 'string' ? JSON.parse(colors) : colors;
+            } catch (error) {
+                console.error('Error parsing colors:', error);
+            }
+        }
+
+        // Save image metadata to database
+        const imageData = {
+            crewId: parseInt(crewId),
+            userId,
+            imageName,
+            templateId,
+            primaryColor: parsedColors?.primary || null,
+            secondaryColor: parsedColors?.secondary || null,
+            imageFilename: file.filename,
+            imageUrl: `/api/saved-images/${file.filename}`,
+            fileSize: file.size,
+            mimeType: file.mimetype
+        };
+
+        const savedImageId = await CrewService.saveCrewImage(imageData);
+        
+        res.status(201).json({
+            id: savedImageId,
+            ...imageData
+        });
+    } catch (error) {
+        console.error("Error saving crew image:", error);
+        res.status(500).json({ error: "Failed to save image" });
+    }
+};
+
+export const getSavedImages = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const crewId = req.params.crewId;
+        const userId = (req as any).userId;
+
+        if (!crewId) {
+            res.status(400).json({ error: "Crew ID is required" });
+            return;
+        }
+
+        // Verify crew belongs to user
+        const crew = await CrewService.getCrewById(parseInt(crewId));
+        if (!crew || (crew as any).userId !== userId) {
+            res.status(404).json({ error: "Crew not found or not authorized" });
+            return;
+        }
+
+        const savedImages = await CrewService.getSavedImagesByCrewId(parseInt(crewId));
+        res.json(savedImages);
+    } catch (error) {
+        console.error("Error fetching saved images:", error);
+        res.status(500).json({ error: "Failed to fetch saved images" });
+    }
+};
+
+export const deleteSavedImage = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const imageId = req.params.imageId;
+        const userId = (req as any).userId;
+
+        if (!imageId) {
+            res.status(400).json({ error: "Image ID is required" });
+            return;
+        }
+
+        const deleted = await CrewService.deleteSavedImage(parseInt(imageId), userId);
+        if (!deleted) {
+            res.status(404).json({ error: "Image not found or not authorized" });
+            return;
+        }
+
+        res.status(200).json({ message: "Image deleted successfully" });
+    } catch (error) {
+        console.error("Error deleting saved image:", error);
+        res.status(500).json({ error: "Failed to delete image" });
     }
 };
 
