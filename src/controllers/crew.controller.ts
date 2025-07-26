@@ -10,7 +10,10 @@ const __filename = fileURLToPath(import.meta.url);
 
 export const generateCrewImageHandler = async (req: Request, res: Response) => {
     try {
-        const { crewId, templateId, imageName, colors } = req.body;
+        const { crewId, templateId, imageName, colors, clubIcon, clubIconType } = req.body;
+        const clubIconFile = req.file; // For file uploads
+
+        console.log('Backend: Received club icon data:', { clubIcon, clubIconType, hasFile: !!clubIconFile });
 
         if (!crewId) {
             return res.status(400).json({ error: "Crew ID is required" });
@@ -22,7 +25,21 @@ export const generateCrewImageHandler = async (req: Request, res: Response) => {
             return res.status(404).json({ error: "Crew not found" });
         }
 
-        const { outputPath } = await generateCrewImage(crew, imageName, templateId, colors);
+        // Prepare club icon data for template
+        let clubIconData = null;
+        if (clubIconType === 'upload' && clubIconFile) {
+            clubIconData = {
+                type: 'upload',
+                filePath: clubIconFile.path
+            };
+        } else if (clubIcon && clubIcon.type === 'preset' && clubIcon.filename) {
+            clubIconData = {
+                type: 'preset',
+                filename: clubIcon.filename
+            };
+        }
+
+        const { outputPath } = await generateCrewImage(crew, imageName, templateId, colors, clubIconData);
         const buffer = await fs.promises.readFile(outputPath);
 
         res.setHeader("Content-Type", "image/png");
@@ -158,6 +175,35 @@ const storage = multer.diskStorage({
 export const upload = multer({ 
     storage: storage,
     limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype.startsWith('image/')) {
+            cb(null, true);
+        } else {
+            cb(null, false);
+        }
+    }
+});
+
+// Configure multer for club icon uploads during image generation
+const clubIconStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        const tempDir = path.join(process.cwd(), 'temp', 'club-icons');
+        // Create directory if it doesn't exist
+        if (!fs.existsSync(tempDir)) {
+            fs.mkdirSync(tempDir, { recursive: true });
+        }
+        cb(null, tempDir);
+    },
+    filename: (req, file, cb) => {
+        const timestamp = Date.now();
+        const ext = path.extname(file.originalname);
+        cb(null, `club_icon_${timestamp}${ext}`);
+    }
+});
+
+export const uploadClubIcon = multer({
+    storage: clubIconStorage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit for club icons
     fileFilter: (req, file, cb) => {
         if (file.mimetype.startsWith('image/')) {
             cb(null, true);

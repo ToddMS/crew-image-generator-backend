@@ -4,14 +4,22 @@ import { fileURLToPath } from "url";
 import { dirname, resolve } from "path";
 import { Crew } from "../types/crew.types";
 
+interface ClubIconData {
+  type: 'preset' | 'upload';
+  filename?: string;
+  filePath?: string;
+}
+
 export class TemplateCanvas1 extends BaseCanvas {
   private color1: string;
   private color2: string;
+  private clubIcon?: ClubIconData;
 
-  constructor(color1: string, color2: string) {
+  constructor(color1: string, color2: string, clubIcon?: ClubIconData) {
     super(1080, 1350); // Instagram portrait
     this.color1 = color1;
     this.color2 = color2;
+    this.clubIcon = clubIcon;
   }
 
   public async draw(crew: Crew) {
@@ -19,7 +27,6 @@ export class TemplateCanvas1 extends BaseCanvas {
   
     const boatImagePath = this.getBoatImagePath(crew.boatType.value);
     const image = await this.loadBoatImage(boatImagePath);
-    const logo = await this.loadBoatImage("../assets/logo/aklogo.jpg");
   
     const scale = 0.8;
     const imgWidth = image.width * scale;
@@ -32,12 +39,44 @@ export class TemplateCanvas1 extends BaseCanvas {
     this.drawHeader(crew);
     this.drawCrewNamesAlongOars(crew, imgX, imgY, imgWidth, imgHeight);
   
-    // === Draw club logo at bottom center ===
-    const logoSize = 160;
-    const logoX = this.width - logoSize - 60;
-    const logoY = this.height - logoSize - 60;     
-  
-    this.ctx.drawImage(logo, logoX, logoY, logoSize, logoSize);
+    // === Draw club logo at bottom right ===
+    await this.drawClubLogo();
+  }
+
+  private async drawClubLogo() {
+    if (!this.clubIcon) {
+      console.log('Template1: No club icon provided, skipping logo');
+      return;
+    }
+
+    try {
+      let logo: Image;
+      
+      if (this.clubIcon.type === 'preset' && this.clubIcon.filename) {
+        // Load preset logo from club-logos directory
+        const logoPath = `../assets/club-logos/${this.clubIcon.filename}`;
+        console.log('Template1: Loading preset logo from:', logoPath);
+        logo = await this.loadBoatImage(logoPath);
+      } else if (this.clubIcon.type === 'upload' && this.clubIcon.filePath) {
+        // Load uploaded logo file
+        console.log('Template1: Loading uploaded logo from:', this.clubIcon.filePath);
+        logo = await loadImage(this.clubIcon.filePath);
+      } else {
+        console.log('Template1: Invalid club icon data, skipping logo');
+        return;
+      }
+
+      // Draw logo at bottom right
+      const logoSize = 160;
+      const logoX = this.width - logoSize - 60;
+      const logoY = this.height - logoSize - 60;
+      
+      console.log('Template1: Drawing club logo at position:', { logoX, logoY, logoSize });
+      this.ctx.drawImage(logo, logoX, logoY, logoSize, logoSize);
+    } catch (error) {
+      console.error('Template1: Error loading club logo:', error);
+      // Optionally draw fallback logo or continue without logo
+    }
   }
   
 

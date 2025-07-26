@@ -1,5 +1,5 @@
 import express from "express";
-import { getAllCrews, createCrew, updateCrewHandler, removeCrew, generateCrewImageHandler, saveCrewImage, getSavedImages, deleteSavedImage, upload } from "../controllers/crew.controller.js";
+import { getAllCrews, createCrew, updateCrewHandler, removeCrew, generateCrewImageHandler, saveCrewImage, getSavedImages, deleteSavedImage, upload, uploadClubIcon } from "../controllers/crew.controller.js";
 import { authenticateUser } from "../middleware/auth.middleware.js";
 
 const router = express.Router();
@@ -8,7 +8,7 @@ const asyncHandler = (fn: Function) => (req: express.Request, res: express.Respo
     Promise.resolve(fn(req, res, next)).catch(next);
 
 // Public routes (no auth required)
-router.post("/generate-image", asyncHandler(generateCrewImageHandler));
+router.post("/generate-image", uploadClubIcon.single('clubIconFile'), asyncHandler(generateCrewImageHandler));
 
 // Protected routes (require authentication)
 router.get("/", authenticateUser, asyncHandler(getAllCrews));

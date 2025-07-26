@@ -3,14 +3,22 @@ import { loadImage, Image } from "canvas";
 import { fileURLToPath } from "url";
 import { dirname, resolve } from "path";
 
+interface ClubIconData {
+    type: 'preset' | 'upload';
+    filename?: string;
+    filePath?: string;
+}
+
 export class TemplateCanvas2 extends BaseCanvas {
     private color1: string;
     private color2: string;
+    private clubIcon?: ClubIconData;
 
-    constructor(width: number, height: number, color1: string, color2: string) {
+    constructor(width: number, height: number, color1: string, color2: string, clubIcon?: ClubIconData) {
         super(width, height);
         this.color1 = color1;
         this.color2 = color2;
+        this.clubIcon = clubIcon;
     }
 
     public async draw(crew: any) {
@@ -55,6 +63,45 @@ export class TemplateCanvas2 extends BaseCanvas {
 
         // Crew names along oars
         this.drawCrewNamesAlongOars(crew, imgX, imgY, imgWidth, imgHeight);
+
+        // === Draw club logo at bottom right ===
+        await this.drawClubLogo();
+    }
+
+    private async drawClubLogo() {
+        if (!this.clubIcon) {
+            console.log('Template2: No club icon provided, skipping logo');
+            return;
+        }
+
+        try {
+            let logo: Image;
+            
+            if (this.clubIcon.type === 'preset' && this.clubIcon.filename) {
+                // Load preset logo from club-logos directory
+                const logoPath = `../assets/club-logos/${this.clubIcon.filename}`;
+                console.log('Template2: Loading preset logo from:', logoPath);
+                logo = await this.loadBoatImage(logoPath);
+            } else if (this.clubIcon.type === 'upload' && this.clubIcon.filePath) {
+                // Load uploaded logo file
+                console.log('Template2: Loading uploaded logo from:', this.clubIcon.filePath);
+                logo = await loadImage(this.clubIcon.filePath);
+            } else {
+                console.log('Template2: Invalid club icon data, skipping logo');
+                return;
+            }
+
+            // Draw logo at bottom right (smaller for this template)
+            const logoSize = 80;
+            const logoX = this.width - logoSize - 30;
+            const logoY = this.height - logoSize - 30;
+            
+            console.log('Template2: Drawing club logo at position:', { logoX, logoY, logoSize });
+            this.ctx.drawImage(logo, logoX, logoY, logoSize, logoSize);
+        } catch (error) {
+            console.error('Template2: Error loading club logo:', error);
+            // Continue without logo
+        }
     }
 
     private drawWaveBackground() {
