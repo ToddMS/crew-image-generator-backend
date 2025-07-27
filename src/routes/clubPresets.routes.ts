@@ -14,7 +14,10 @@ import { authenticateUser } from "../middleware/auth.middleware.js";
 
 const router = Router();
 
-// All club preset routes require authentication
+// Serve logo files (public access for images - no auth required)
+router.get("/logos/:filename", serveLogo);
+
+// All other club preset routes require authentication
 router.use(authenticateUser);
 
 // Get all user's presets
@@ -37,8 +40,5 @@ router.delete("/:id", deletePreset);
 
 // Set preset as default
 router.patch("/:id/default", setDefaultPreset);
-
-// Serve logo files (public access for images)
-router.get("/logos/:filename", serveLogo);
 
 export default router;
