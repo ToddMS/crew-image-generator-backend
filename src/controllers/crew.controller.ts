@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import CrewService from "../services/crew.service.js";
 import { fileURLToPath } from "url";
-import { generateCrewImage } from "../services/image.service.js";
+import { generateCrewImage, ClubIconData } from "../services/image.service.js";
 import fs from "fs";
 import path from "path";
 import multer from "multer";
@@ -26,7 +26,7 @@ export const generateCrewImageHandler = async (req: Request, res: Response) => {
         }
 
         // Prepare club icon data for template
-        let clubIconData = null;
+        let clubIconData: ClubIconData | undefined = undefined;
         if (clubIconType === 'upload' && clubIconFile) {
             clubIconData = {
                 type: 'upload',

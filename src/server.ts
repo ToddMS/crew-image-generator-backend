@@ -15,7 +15,7 @@ const PORT = process.env.PORT || 8080;
 app.use(cors({
     origin: ['http://localhost:5173', 'http://localhost:3000', 'https://accounts.google.com'],
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
 }));
 app.use(express.json({ limit: '10mb' }));

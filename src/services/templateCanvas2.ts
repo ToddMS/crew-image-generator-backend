@@ -1,4 +1,4 @@
-import { BaseCanvas } from "./baseCanvas";
+import { BaseCanvas } from "./baseCanvas.js";
 import { loadImage, Image } from "canvas";
 import { fileURLToPath } from "url";
 import { dirname, resolve } from "path";

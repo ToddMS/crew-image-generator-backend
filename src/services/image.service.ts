@@ -4,7 +4,7 @@ import { TemplateCanvas2 } from "./templateCanvas2.js";
 import { getNextFileName } from "../utils/file.utils.js";
 import { Crew } from "../types/crew.types.js";
 
-interface ClubIconData {
+export interface ClubIconData {
     type: 'preset' | 'upload';
     filename?: string;
     filePath?: string;

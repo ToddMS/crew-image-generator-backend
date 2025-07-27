@@ -1,5 +1,5 @@
-import { BaseCanvas } from "./baseCanvas";
-import { Crew } from "../types/crew.types";
+import { BaseCanvas } from "./baseCanvas.js";
+import { Crew } from "../types/crew.types.js";
 import { loadImage, Image } from "canvas";
 import { fileURLToPath } from "url";
 import { dirname, resolve } from "path";
