@@ -27,7 +27,11 @@ class ClubPresetsService {
       "SELECT * FROM ClubPresets WHERE user_id = ? ORDER BY is_default DESC, club_name ASC",
       [userId]
     );
-    return rows as ClubPreset[];
+    // Convert MySQL 0/1 to proper JavaScript booleans
+    return rows.map(row => ({
+      ...row,
+      is_default: Boolean(row.is_default)
+    })) as ClubPreset[];
   }
 
   async getPresetById(id: number, userId: number): Promise<ClubPreset | null> {
@@ -35,7 +39,14 @@ class ClubPresetsService {
       "SELECT * FROM ClubPresets WHERE id = ? AND user_id = ?",
       [id, userId]
     );
-    return rows.length > 0 ? (rows[0] as ClubPreset) : null;
+    if (rows.length > 0) {
+      const row = rows[0];
+      return {
+        ...row,
+        is_default: Boolean(row.is_default)
+      } as ClubPreset;
+    }
+    return null;
   }
 
   async createPreset(userId: number, presetData: CreateClubPresetData): Promise<number> {
