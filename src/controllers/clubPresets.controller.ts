@@ -76,9 +76,9 @@ export const getPresetById = async (req: Request, res: Response) => {
 export const createPreset = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).userId;
-    const { preset_name, club_name, primary_color, secondary_color, is_default } = req.body;
+    const { club_name, primary_color, secondary_color, is_default } = req.body;
 
-    if (!preset_name || !club_name || !primary_color || !secondary_color) {
+    if (!club_name || !primary_color || !secondary_color) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
@@ -86,7 +86,6 @@ export const createPreset = async (req: Request, res: Response) => {
     const logo_filename = req.file ? req.file.filename : undefined;
 
     const presetId = await ClubPresetsService.createPreset(userId, {
-      preset_name,
       club_name,
       primary_color,
       secondary_color,

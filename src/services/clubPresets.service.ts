@@ -4,7 +4,6 @@ import pool from "../models/db.js";
 export interface ClubPreset {
   id: number;
   user_id: number;
-  preset_name: string;
   club_name: string;
   primary_color: string;
   secondary_color: string;
@@ -15,7 +14,6 @@ export interface ClubPreset {
 }
 
 export interface CreateClubPresetData {
-  preset_name: string;
   club_name: string;
   primary_color: string;
   secondary_color: string;
@@ -26,7 +24,7 @@ export interface CreateClubPresetData {
 class ClubPresetsService {
   async getUserPresets(userId: number): Promise<ClubPreset[]> {
     const [rows] = await pool.execute<RowDataPacket[]>(
-      "SELECT * FROM ClubPresets WHERE user_id = ? ORDER BY is_default DESC, preset_name ASC",
+      "SELECT * FROM ClubPresets WHERE user_id = ? ORDER BY is_default DESC, club_name ASC",
       [userId]
     );
     return rows as ClubPreset[];
@@ -54,11 +52,10 @@ class ClubPresetsService {
       }
 
       const [result] = await connection.execute<ResultSetHeader>(
-        `INSERT INTO ClubPresets (user_id, preset_name, club_name, primary_color, secondary_color, logo_filename, is_default) 
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO ClubPresets (user_id, club_name, primary_color, secondary_color, logo_filename, is_default) 
+         VALUES (?, ?, ?, ?, ?, ?)`,
         [
           userId,
-          presetData.preset_name,
           presetData.club_name,
           presetData.primary_color,
           presetData.secondary_color,

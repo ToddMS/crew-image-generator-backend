@@ -7,7 +7,6 @@ USE CrewManagement;
 CREATE TABLE IF NOT EXISTS ClubPresets (
     id INT PRIMARY KEY AUTO_INCREMENT,
     user_id INT NOT NULL,
-    preset_name VARCHAR(100) NOT NULL,
     club_name VARCHAR(255) NOT NULL,
     primary_color VARCHAR(7) NOT NULL DEFAULT '#5E98C2',
     secondary_color VARCHAR(7) NOT NULL DEFAULT '#ffffff',
