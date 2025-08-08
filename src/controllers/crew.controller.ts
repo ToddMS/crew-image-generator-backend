@@ -43,6 +43,7 @@ export const generateCrewImageHandler = async (req: Request, res: Response) => {
         const buffer = await fs.promises.readFile(outputPath);
 
         res.setHeader("Content-Type", "image/png");
+        res.setHeader("Content-Disposition", "inline");
         res.send(buffer);
     } catch (error) {
         console.error("Error generating crew image:", error);
