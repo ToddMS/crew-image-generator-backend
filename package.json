@@ -1,0 +1,42 @@
+{
+  "name": "crew-image-generator-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "dev": "tsx src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/express-session": "^1.18.2",
+    "@types/multer": "^2.0.0",
+    "@types/pg": "^8.15.5",
+    "@types/uuid": "^10.0.0",
+    "bcrypt": "^6.0.0",
+    "canvas": "^3.1.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-session": "^1.18.2",
+    "google-auth-library": "^10.1.0",
+    "multer": "^2.0.2",
+    "mysql2": "^3.12.0",
+    "pg": "^8.16.3",
+    "uuid": "^11.1.0"
+  },
+  "description": "",
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.13.4",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.20.3",
+    "typescript": "^5.7.3"
+  }
+}
